@@ -1,0 +1,262 @@
+---
+title: "CS 422"
+author: "Vijay K. Gurbani, Ph.D., Illinois Institute of Technology"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+  html_notebook:
+    toc: yes
+    toc_float: yes
+---
+
+<!-- More information in R Markdown can be found at:
+1. https://www.ssc.wisc.edu/sscc/pubs/RFR/RFR_RMarkdown.html  This is 
+   the place to start since it is a short tutorial.
+2. https://rmarkdown.rstudio.com/index.html This contains a longer 
+   tutorial.  Take a look at the cheatsheet in 
+   https://rmarkdown.rstudio.com/lesson-15.html, it is a concise 
+   reference of R Markdown on two pages.
+<-->
+
+## Use this as a template for your homeworks.
+#### Run all the chunks by clicking on "Run" at the top right of the edit 
+#### window and choose "Run All".  Assuming there were no errors in the
+#### chunk, you should see a "Preview" button become visible on the top
+#### left of the edit window.  Click this button and a html document should
+#### pop up with the output from this R markdown script.
+
+
+
+### Part 2.1-a
+
+```{r}
+setwd("D:/IIIT/Data_Mining/Assignment_1")
+college.df <- read.csv('College.csv')
+print(head(college.df))
+
+```
+### Part 2.1-b (Summary)
+```{r}
+count.obs <- table(college.df$Private)
+cat("The No.of Private colleges: ",count.obs[[2]])
+cat("\nThe No.of Public colleges: ",count.obs[[1]])
+```
+
+### Part 2.1-c
+```{r}
+library(ggplot2)
+library(dplyr)
+public.col.df = filter(college.df,Private ==  'Yes')
+private.col.df = filter(college.df,Private ==  'No')
+
+phd.public <- ggplot(public.col.df,aes(x=PhD))
+phd.public + geom_histogram(aes(y=..density..),color = 'black',fill='lightblue') +geom_density() + ggtitle("PhD holders in public colleges")
+
+phd.private <- ggplot(private.col.df,aes(x=PhD))
+phd.private + geom_histogram(aes(y=..density..),color = 'black',fill='orange') +geom_density() + ggtitle("PhD holders in private colleges")
+
+
+print('From the graph we can see that the data in the private colleges follows normal distribution, if we remove the outliers and the data in private colleges looks like and left skewed distribuitons.')
+print('----------------------------------------------------')
+print('Public colleges are top heavy with PhD holders')
+
+```
+### Part 2.1-D 
+```{r}
+library(dplyr)
+sorted.colleges.df <- arrange(college.df,Grad.Rate)
+
+print('Top Five colleges with minimum graduation rates\n')
+print(head(select(sorted.colleges.df,Name,Grad.Rate),5))
+print('Top Five colleges with maximum graduation rates\n')
+print(tail(select(sorted.colleges.df,Name,Grad.Rate),5))
+
+```
+### Part 2.1-e-i
+```{r}
+summary(college.df)
+```
+### Part 2.1-e-ii
+
+```{r}
+pairs(college.df[,1:10],col='blue',main='Scatter plot matrix for the first ten columns')
+```
+### Part 2.1-e-iii
+
+```{r}
+library(ggplot2)
+box.plot <- ggplot(college.df,aes(x=Private,y=perc.alumni))
+box.plot + geom_boxplot(aes(fill=Private)) + ggtitle("Alumini donates more to the college") + theme_dark()
+```
+### Part 2.1-e-iv
+
+```{r}
+library(ggplot2)
+box.plot <- ggplot(college.df,aes(x=PhD,y=perc.alumni))
+box.plot + geom_boxplot(aes(fill=Private)) + ggtitle("Alumini donates more to the college") + theme_bw()
+```
+### Part 2.1-e-v 
+
+```{r}
+Elite <- rep('No', nrow(college.df))
+Elite[college.df$Top10perc > 50] <- 'Yes'
+Elite <- as.factor(Elite)
+college.df <- data.frame(college.df, Elite)
+summary(college.df$Elite)
+```
+### Part 2.1-e-vi 
+
+```{r}
+par(mfcol = c(3, 4))
+hist(college.df$Accept, breaks = 5, col = "blue", main = "Histogram", xlab = "Accept")
+hist(college.df$Accept, breaks = 10, col = "orange", main = "Histogram", xlab = "Accept")
+hist(college.df$Accept, breaks = 30, col = "red", main = "Histogram", xlab = "Accept")
+
+hist(college.df$Enroll, breaks = 5, col = "blue", main = "Histogram", xlab = "Enroll")
+hist(college.df$Enroll, breaks = 10, col = "orange", main = "Histogram", xlab = "Enroll")
+hist(college.df$Enroll, breaks = 30, col = "red", main = "Histogram", xlab = "Enroll")
+
+hist(college.df$Grad.Rate, breaks = 5, col = "blue", main = "Histogram", xlab = "Grad Rate")
+hist(college.df$Grad.Rate, breaks = 10, col = "orange", main = "Histogram", xlab = "Grad Rate")
+hist(college.df$Grad.Rate, breaks = 30, col = "red", main = "Histogram", xlab = "Grad Rate")
+
+
+hist(college.df$S.F.Ratio, breaks = 5, col = "blue", main = "Histogram", xlab = "S.F Ratio")
+hist(college.df$S.F.Ratio, breaks = 10, col = "orange", main = "Histogram", xlab = "S.F Ratio")
+hist(college.df$S.F.Ratio, breaks = 30, col = "red", main = "Histogram", xlab = "S.F Ratio")
+
+```
+### Part 2.1-e-vii
+```{r}
+
+
+```
+### Part 2.2-a 
+```{r}
+library(dplyr)
+df.google <- read.csv('goog.csv')
+update.df.google <- select(df.google,-dem,-country)
+df.cor <- cor(update.df.google)
+print(df.cor)
+```
+### Part 2.2-B-i,ii,iii,iv 
+```{r}
+library(psych)
+pairs.panels(update.df.google,cex=0.5,pch=19)
+#we can see that request variable is strongly/positively correlated with compiled(response variable)
+#we can see that freepress variable is strongly/negatively correlated with compiled(response variable)
+#The correlation value between hdi and internet is 0.90 which is very strong and positively corelated.
+#The correlation value between hdi and pop is -0.71 which is very weak and negatively corelated.
+
+
+```
+### Part 2.2-c 
+```{r}
+goog.model <- lm(formula = complied ~ ., data = update.df.google)
+print(summary(goog.model))
+```
+### Part 2.2-c-i,ii,iii 
+```{r}
+#Since we have very less observations(26) we can consider pop as a significant variable with 0.0705 as p-value
+# Looking at the multiple r-square we can say our model explains 41% varince
+#Well i cant say our model is worst as we have very few observations, but we can improve our model by getting more number of observations and perfromed a detailed regression analysis
+```
+### Part 2.2-d 
+```{r}
+head(df.google)
+#cor(df.google$dem,df.google$complied)
+```
+### Part 2.3-a 
+```{r}
+df.nba <- read.csv(file = 'nba.csv')
+head(df.nba)
+str(df.nba)
+
+```
+### Part 2.3-a 
+```{r}
+library(GGally)
+ggcorr(df.nba, nbreaks=8,  label=TRUE, label_size=5, label_color='white')
+model <- lm(formula = PTS~FG,data = df.nba)
+summary(model)
+#Well the model performs really good as we can see that 91% fo the varience is explained by our model from multiple r-square
+```
+### Part 2.3-b 
+```{r}
+library(ggplot2)
+ggplot(data = df.nba, aes(x = FG, y = PTS)) + geom_point() +stat_smooth(method = "lm")+ggtitle("Regression line obtained from the model")
+```
+### Part 2.3- 
+```{r}
+library(dplyr)
+set.seed(1122)
+index <- sample(1:nrow(df.nba), 250)
+train <- df.nba[index, ]
+test <- df.nba[-index, ]
+
+```
+### Part 2.3-c 
+```{r}
+library(GGally)
+ggcorr(df.nba, nbreaks=8,  label=TRUE, label_size=5, label_color='white')
+#From the plot we can see that the point scored by a player is positively correlated with FG, FGA, Min
+pairs.panels(select(df.nba,FG,FGA,PTS,MIN))
+```
+### Part 2.3-d 
+```{r}
+print('-------------Model With FT variable instead of FGA(best model)----------')
+model.nba <- lm(formula =PTS~FG+MIN+FGA,data = train)
+summary(model.nba)
+print('-------------Model With FT variable instead of FGA(Overfitting)----------')
+model.nba.first <- lm(formula =PTS~FG+MIN+FT,data = train)
+summary(model.nba.first)
+#This is better model which is far from overfitting
+print('----------Model with almost overfitting(adding X3PA)----------')
+model.nba.sec <- lm(formula =PTS~MIN+FG+FT+X3PA,data = train)
+summary(model.nba.sec)
+#This model is giving an r-square which is amost near to 1 and might be overfitting
+print('----------Model with overfitting(adding X3P)----------')
+model.nba.third <- lm(formula =PTS~MIN+FG+FT+X3P+X3PA,data = train)
+summary(model.nba.sec)
+#This model is giving an r-square which is 1 and also overfitting
+```
+### Part 2.3-e
+```{r}
+plot(model.nba,1)
+#We can see most of the values are cluster around zero 
+```
+### Part 2.3-f
+
+```{r}
+hist(model.nba$residuals,breaks = 30)
+#It follows gaussian distribution
+```
+### Part 2.3-g
+```{r}
+head(test)
+predicted.values <- predict(model.nba,test[c('FG','MIN','FGA')])
+pred.values <- data.frame(predicted = predicted.values,actual.values=test[[c('PTS')]])
+pred.values$error <- pred.values$actual.values - pred.values$predicted
+pred.values
+
+```
+### Part 2.3-h
+```{r}
+prediction <- predict.lm(model.nba, test , interval="prediction", level=0.95, datatype="numeric")
+n <- dim(train)[1]
+p <- dim(train)[2] - 1
+
+print('----------Residual sum of Errors(RSS)------------')
+RSS  <- sum((test$PTS - prediction[,1])^2)
+print(RSS)
+print('------------Total sum of Errors(TSS))------------')
+TSS  <- sum((test$PTS - mean(test$PTS))^2)
+print(TSS)
+print('-------f-statistics-------------')
+F.stat    <- ((TSS - RSS)/3)/(RSS/(n-p-1))
+print(F.stat)
+print('------------Residual Standard Error----------')
+RSE  <- sqrt(1/(n-p-1)*RSS)
+print(RSE)
+```

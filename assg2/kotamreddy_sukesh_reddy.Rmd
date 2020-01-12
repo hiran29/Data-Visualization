@@ -1,0 +1,309 @@
+---
+title: "CS 422"
+author: "Vijay K. Gurbani, Ph.D., Illinois Institute of Technology"
+output:
+  word_document:
+    toc: yes
+  html_notebook:
+    toc: yes
+    toc_float: yes
+---
+
+<!-- More information in R Markdown can be found at:
+1. https://www.ssc.wisc.edu/sscc/pubs/RFR/RFR_RMarkdown.html  This is 
+   the place to start since it is a short tutorial.
+2. https://rmarkdown.rstudio.com/index.html This contains a longer 
+   tutorial.  Take a look at the cheatsheet in 
+   https://rmarkdown.rstudio.com/lesson-15.html, it is a concise 
+   reference of R Markdown on two pages.
+<-->
+
+
+### Quesion 2---2.1
+```{r}
+# Load the dataset and set seed
+set.seed(1122)
+df.train <- read.csv('adult-train.csv')
+print(head(df.train))
+df.test <- read.csv('adult-test.csv')
+print(head(df.test))
+```
+
+### 2.1(a) 
+
+```{r}
+#Remove all the observations that have ‘?’ in them. Do the same thing for the test dataset.
+print('---------------------train data---------------------')
+cat("Total number of observation before cleaning in train data",length(df.train$occupation))
+cat("\nNumber of observations with ? in train data",sum(df.train$occupation == '?'))
+#View(df.train)
+df.train$occupation <- gsub('?',NA,df.train$occupation,fixed=TRUE)
+df.train$native_country <- gsub('?',NA,df.train$native_country,fixed=TRUE)
+
+
+#View(df.train)
+
+updated.df.train <- df.train[complete.cases(df.train),]
+cat("\nTotal Number of observations after cleaning in train data",length(updated.df.train$occupation))
+
+cat('\n-------------------test data-------------------------')
+
+cat("\nTotal number of observation before cleaning in test data",length(df.test$occupation))
+cat("\nNumber of observations with ? in test data",sum(df.test$occupation == '?'))#View(df.train)
+df.test$occupation <- gsub('?',NA,df.test$occupation,fixed=TRUE)
+df.test$native_country <- gsub('?',NA,df.test$native_country,fixed=TRUE)
+
+#View(df.train)
+updated.df.test <- df.test[complete.cases(df.test),]
+cat("\nTotal Number of observations after cleaning in test data",length(updated.df.test$occupation))
+```
+### Part 2.1-b-i-ii-iii-iv
+```{r}
+library(rpart)
+library(rpart.plot)
+
+tree.model <- rpart(income ~ ., method="class", data=updated.df.train)
+rpart.plot(tree.model, extra=104, type=4, main="Income")
+print('the top three important predictors in the model are')
+tree.model$variable.importance[1:3]
+cat('The first split is done on the predictor variable: ',rownames(tree.model$splits)[1])
+print('From the plot we can say that the predicted class of 1st Node is <=50k')
+print("distribution of the <=50K and >50K at RootNode -> .75, .25")
+```
+
+### 2.1-c
+```{r}
+library(rpart)
+library(caret)
+pred.values <- predict(tree.model,updated.df.test,type="class")
+conf.Mat <- confusionMatrix(pred.values, updated.df.test[,15])
+conf.Mat
+```
+### 2.1(c)-(i) 
+
+```{r}
+#What is the balanced accuracy of the model? (ii) What is the balanced error rate of the model? (c)(iii) What is the sensitivity? Specificity? (c)(iv) What is the AUC of the ROC curve. Plot the ROC curve
+library(gplots)
+library(ROCR)
+cat("Balanced accuracy of the model -> ", conf.Mat$byClass[11],'\n')
+cat("Balanced Error of the model -> ", 1 - conf.Mat$byClass[11],'\n')
+cat("Specificity of the model ->", conf.Mat$byClass[2],'\n')
+cat("Sensitivity of the model -> ", conf.Mat$byClass[1],'\n')
+
+predict.roc <- predict(tree.model, newdata=updated.df.test, type="prob")[,2]
+pred <- prediction(predict.roc, updated.df.test$income)
+perf <- performance(pred, "tpr", "fpr")
+plot(perf, colorize=T, lwd=3)
+abline(0,1)
+auc <- performance(pred, measure = "auc")
+cat(paste("The area under curve (AUC) for this model is ", round(auc@y.values[[1]], 3)))
+```
+### 2.1-(d)-i  
+```{r}
+#In the training dataset, how many observations are in the class “<=50K”? How many are in the class “>50K” ?
+cat("Number of observations are in the class <=50K are ", sum(updated.df.train$income == "<=50K"),'\n')
+cat("Number of observations are in the class >50K are ", sum(updated.df.train$income == ">50K"))
+```
+### 2.1(d)(ii)  
+
+```{r}
+#Create a new training dataset that has equal representation of both classes
+nsamp <- length(which(updated.df.train$income == ">50K"))
+more50K_ind <- sample(which(updated.df.train$income == ">50K"), nsamp)
+less50K_ind <- sample(which(updated.df.train$income == "<=50K"), nsamp)
+new.Training.Dataset <- updated.df.train[c(more50K_ind, less50K_ind), ]
+sprintf("Number of observations are in the class <=50K are %d", sum(new.Training.Dataset$income == "<=50K"))
+sprintf("Number of observations are in the class >50K are %d", sum(new.Training.Dataset$income == ">50K"))
+```
+
+### 2.1(d)(iii)  
+
+```{r}
+#Create a new training dataset that has equal representation of both classes
+library(rpart)
+library(ROCR)
+library(caret)
+library(rpart.plot)
+balanced.model <- rpart(income ~ ., method="class", data=new.Training.Dataset)
+balanced.pred <- predict(balanced.model, updated.df.test, type="class")
+balancedCM <- confusionMatrix(balanced.pred, updated.df.test[,15])
+#print(balancedCM)
+
+cat("Balanced accuracy of the model -> ", balancedCM$byClass[11],'\n')
+cat("Balanced Error of the model -> ", 1 - balancedCM$byClass[11],'\n')
+cat("Specificity of the model ->", balancedCM$byClass[2],'\n')
+cat("Sensitivity of the model -> ", balancedCM$byClass[1],'\n')
+
+pred.rocr <- predict(balanced.model, newdata=updated.df.test, type="prob")[,2]
+f.pred <- prediction(pred.rocr, updated.df.test$income)
+f.perf <- performance(f.pred, "tpr", "fpr")
+plot(f.perf, colorize=T, lwd=3)
+abline(0,1)
+auc <- performance(f.pred, measure = "auc")
+cat(paste("The area under curve (AUC) for this model is ", round(auc@y.values[[1]], 3)))
+```
+### 2.1(e) 
+
+```{r}
+# Comment on the differences in the balanced accuracy, sensitivity, specificity, positive predictive value and AUC of the models used
+print('Well from the first model we can say that there is class imbalance problem which lead to bias towards one class,also the balance accuaracy is less than the actual accuracy and the sensityvity is much greater than specifity.
+The second model which results after under sampling the data , we can see that balance accuracy is more and sensitivity(recall), specifity is balanced and greater than the previous model.') 
+
+library(dplyr)
+data_train=updated.df.train %>% mutate_if(is.character, as.factor)
+#str(data_train)
+data_test=updated.df.test %>% mutate_if(is.character, as.factor)
+#str(data_test)
+```
+### 2.2(a)  
+
+```{r}
+# Induce a random forest model on the training dataset and fit the test dataset to the model. Examine the confusion matrix on the test dataset and comment on the efficacy of the model
+set.seed(1122)
+library(randomForest)
+forest.model <- randomForest(formula=income ~ .,data = data_train,importance=T)
+forest.pred <- predict(forest.model, data_test, type="class")
+forestCM <- confusionMatrix(forest.pred, data_test$income)
+print(forestCM)
+print("From the random forest model i.e, without tuning, we can say that this is far better than the decision tree and if we start tunining the parameters and do under sampling we get better results than decision tree and prevent from overfitting ")
+```
+### 2.2-b  
+```{r}
+#Perform a grid search
+library(dplyr)
+library(randomForest)
+
+hyper_grid <- expand.grid(mtry = c(2,5,7),ntree=c(100,750))
+for(i in 1:nrow(hyper_grid)){
+   forest.model <- randomForest(formula=income ~ .,data = data_train,importance=T,ntree = hyper_grid$ntree[i],mtry= hyper_grid$mtry[i])
+   hyper_grid$OOB[i] <- mean(forest.model$err.rate[,1])
+   forest.pred <- predict(forest.model, data_test, type="class")
+   forestCM <- confusionMatrix(forest.pred, data_test$income)
+   hyper_grid$accuracy[i] <- forestCM$overall[[1]]
+   hyper_grid$balanced.accuracy <- forestCM$byClass[[11]]
+   hyper_grid$sensitivity[i] <- forestCM$byClass[[1]]
+   hyper_grid$specificity[i] <- forestCM$byClass[[2]]
+   hyper_grid$precision[i] <- forestCM$byClass[[5]]
+   hyper_grid$recall[i] <- forestCM$byClass[[6]]
+   hyper_grid$f1[i] <- forestCM$byClass[[7]]
+}
+df <- as.data.frame(do.call(rbind, hyper_grid))
+colnames(df) <- c('model1','model2','model3','model4','model5','model6')
+print(df)
+```
+### 2.2-c  
+```{r}
+#Determine which model is the best by examining balanced accuracy, sensitivity, and specificity and picking the model that shows the maximum balanced accuracy, sensitivity and specificity
+print('From the above data frame we can see that model 4 with ntree 750 and mtry 2 gives the maximum balanced accuracy, sensitivity and specificity where as prallely model 1 with ntree 100 and mtry 2 give almost closer to model 4 values with much less model complexity ')
+```
+### 2.2-d  
+```{r}
+#Determine which model is best by examining the lowest OOB error.
+print(df)
+print('From the above data frame we can see that model 4 is the one which have less OOB error 0.13 ')
+```
+### 2.2-e 
+```{r}
+# Is the best model as determined by (c) the same model as determined by (d). If yes, why do you think this may be the case? If no, why do you think this is the case?
+print("According to the all the values we can say that the best one is model 4 as it having less oob error and maximum balanced accuracy, sensitivity and specificity. But if I want to choose the best model, I will pick model 1 as it is more closer to model 4 with very less difference in  all the values(balance accuracy,precision,sensitivity) and also with less model complexity as it is made of 100 tree where as model 4 is made of 750 trees")
+```
+### 2.3 
+```{r}
+#Perceptron
+# imports csv file
+percep_data<- read.csv("data-500 (1).csv", sep = ",")
+prediction <- vector("integer", nrow(train))
+
+percep_function <- function (train,learn_rate=0.01,true_percent=0.99) {
+    weightX1  <- 0
+    weightX2  <- 0
+    bias      <- 0
+    
+  
+    # initialize boolean value = FALSE to enter while loop
+    all_classified <- FALSE
+    
+    # initialize number of while loop iterations to sufficiently train weights
+    epochs <- 0
+    errors <- c(0)
+    # while prediction accuracy < 94% 
+    while (!all_classified) {
+    
+        # after appropriate amount of iterations all_classified should remain TRUE to exit while loop
+        all_classified <- TRUE
+         
+        
+
+        # loop iterates over all rows in train dataset
+        for (i in 1:nrow(train)) {
+            
+            # initial prediction values take into consideration bias, multiplication 
+            # of weights and x[1], x[2] values
+            prediction[i] <- sign((bias + (weightX1 * train[i,3]) + (weightX2 * train[i,4])))
+      
+            # conditional to modify weights if there is a mislabel
+            if (train[i,1] != prediction[i]) {
+                
+                # calculcate error (correct label - predicted)
+                error <- (train[i,1] - prediction[i])
+                
+                # calculate new weights and bias
+                weightX1 <- weightX1 + learn_rate*(error * train[i,3])
+                weightX2 <- weightX2 + learn_rate*(error * train[i,4])
+                bias <- bias + (error)
+                
+                # looping through if statement indicates not all predictions are correct; weights 
+                # must still be updated 
+                all_classified <- FALSE
+                errors <- c(errors,error)
+            }
+         
+        }
+        
+        # verify predicted label values align with true labeled values in dataset
+        z <- train$label == prediction
+        true_count <- table(z)["TRUE"]
+        true_count_percentage <- true_count / nrow(train)
+        
+        # update while loop iterator; takes ~ 22 epochs to reach convergence for not_clean data
+        epochs <- epochs + 1
+        errors <- c(errors,error)
+        
+        # verifies if prediction accuracy is > 94%; if so, no longer enter while loop
+        if (true_count_percentage > true_percent) {
+            all_classified <- TRUE
+        }
+        
+        # Perceptron Classifier has NOT reached convergence (> 94% label accuracy)
+        if (epochs > 2000) {
+            all_classified <- TRUE
+        }
+    }
+    weights <- c(weightX1, weightX2)
+    
+    return(list(weights = weights, bias = bias, true_count_percentage = true_count_percentage, epochs = epochs,error=errors))
+    # instantiates perceptron function for plotting in following function
+}
+instan_percep_1 <- percep_function(percep_data)
+
+slope <- -(instan_percep_1$weights[1]/instan_percep_1$weights[2])
+bias <- -(instan_percep_1$bias/instan_percep_1$weights[2])
+
+library(ggplot2)
+ggplot(percep_data, aes(x = x1, y = x2)) + 
+        geom_point(aes(colour=label),size=2) +
+        geom_abline(intercept=1, slope = slope)+
+        xlab("X1") + 
+        ylab("X2") + 
+        ggtitle("Perceptron model ")
+```
+### 2.3-a-b
+```{r}
+#cat('The average error per epoch is',sum(instan_percep_1$error[1])/length(instan_percep_1$error))
+#cat('\nThe number of epochs is',instan_percep_1$epochs)
+#cat('\nThe trained weights and intercept are w1,w2 ')
+#cat(instan_percep_1$weights)
+klwl<-3
+cat('cdskjwnv\n',klwl)
+cat('\njkvfnekn')
+```
